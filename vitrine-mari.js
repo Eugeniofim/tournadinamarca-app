@@ -23,11 +23,15 @@ const VT_IC = {
   escudo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>',
   ingresso: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 0 0 0 4v4h18v-4a2 2 0 0 0 0-4V5H3z"/><path d="M14 5v12" stroke-dasharray="2 2"/></svg>',
   pino: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>',
+  mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M4 7l8 6 8-6"/></svg>',
   wa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 19.5l1.2-3.6A7.5 7.5 0 1 1 8.6 18.6z"/><path d="M9.2 9.3c.3 1.8 1.6 3.6 3.6 4.6l1.2-1 1.6.8c-.2 1-.9 1.6-1.9 1.6-2.9-.3-5.5-2.9-5.8-5.8 0-1 .6-1.7 1.6-1.9l.8 1.6z"/></svg>',
 };
 /* a linha tracejada com a bicicletinha no fim */
 const VT_ROTA = '<svg class="vtRota" viewBox="0 0 150 18" preserveAspectRatio="xMinYMid meet" aria-hidden="true"><path d="M2 11 C 28 4, 52 15, 80 8 S 112 6, 122 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3.5 4" stroke-linecap="round"/><g transform="translate(124 2)" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="4" cy="10" r="3.4"/><circle cx="19" cy="10" r="3.4"/><path d="M4 10l4.5-6.5h6.5L19 10M8.5 3.5L12 10h3.5M13.5 3.5h3"/></g></svg>';
 
+/* o e-mail que o cliente vê: o dos Ajustes, se um dia ela gravar; senão o do config (tournadinamarca@gmail.com) */
+const vtEmail = () => String((DB.settings && DB.settings.emailContato) || (typeof GUIA_CFG !== 'undefined' && GUIA_CFG.email) || '').trim();
+function vtMailto(en) { const e = vtEmail(); return e ? 'mailto:' + e + '?subject=' + encodeURIComponent(en ? 'Contact from the app — Tour na Dinamarca' : 'Contato pelo app — Tour na Dinamarca') : ''; }
 const vtEN = () => typeof LANG !== 'undefined' && LANG === 'en';
 function vtRotulo(pt, en) { const p = document.createElement('p'); p.className = 'vtRot'; p.innerHTML = `<span>${esc(vtEN() ? en : pt)}</span>${VT_ROTA}`; return p; }
 function vtElem(html) { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; }
@@ -59,6 +63,13 @@ function vtArruma() {
   const wa = [...inn.querySelectorAll('a.lk')].find(a => /wa\.me|whatsapp|api\.whatsapp/i.test(a.href));
   if (wa) { const b = wa.querySelector('b'); if (b) b.textContent = en ? 'Message me on WhatsApp' : 'Fale comigo no WhatsApp';
     const fone = (DB.settings && DB.settings.whats) || ''; if (fone && !wa.querySelector('small')) b.insertAdjacentHTML('afterend', `<small>${esc(fone)}</small>`); }
+  /* "Fale comigo por e-mail" (pedido de 22/10): um botão no grupo Conheça e o envelope junto do Instagram e do WhatsApp */
+  let mail = null; const mt = vtMailto(en);
+  if (mt && !q('#goMail')) {
+    mail = vtElem(`<a class="lk" id="goMail" href="${esc(mt)}"><span class="ic">${VT_IC.mail}</span><span><b>${en ? 'Email me' : 'Fale comigo por e-mail'}</b><small>${esc(vtEmail())}</small></span><span class="go" aria-hidden="true">→</span></a>`);
+    const redes = vcard.querySelector('.redes');
+    if (redes && !redes.querySelector('.rede.ml')) redes.insertAdjacentHTML('beforeend', `<a class="rede ml" href="${esc(mt)}" aria-label="E-mail" title="${esc(vtEmail())}">${VT_IC.mail}</a>`);
+  }
   /* sugestão nova: o tour de barco */
   let barco = null; const xb = Tours.live().find(x => x.type === 'boat');
   if (xb && !q('#goBarco')) {
@@ -68,7 +79,7 @@ function vtArruma() {
   const grupos = [
     ['Com a Mari', 'With Mari', [q('#goTours'), q('#goPers')]],
     ['Planeje a sua viagem', 'Plan your trip', [q('#goTrf'), q('#goBike'), barco]],
-    ['Conheça', 'Get to know me', [q('#goAbout'), q('#goApre'), wa]],
+    ['Conheça', 'Get to know me', [q('#goAbout'), q('#goApre'), wa, mail]],
     ['Morar e economizar', 'Living & savings', [q('#goMud'), q('#goParc')]],
   ];
   const postos = new Set(), frag = document.createDocumentFragment();
@@ -88,10 +99,12 @@ function vtCss() {
   const s = document.createElement('style'); s.id = 'vtCss';
   /* paleta: noite do porto #121A2C · azul-marinho #1D2A44 · creme #FBF7EC · amarelo #F2C230 */
   s.textContent = `
-  .hub.vt{place-items:start center;padding:20px 16px 48px}
+  .hub.vt{place-items:start center;padding:20px 16px 48px;background-color:#0E1320}
+  /* Nyhavn (22/10): no computador a foto mostra as fachadas coloridas e os barcos, não só o céu */
+  .hub.vt .hub-bg{background-position:center 62%}
   .hub.vt .hub-bg::after{background:linear-gradient(180deg,rgba(14,19,32,.30) 0%,rgba(14,19,32,.52) 34%,rgba(14,19,32,.86) 78%,rgba(14,19,32,.94) 100%)}
   .hub.vt .hub-in{gap:8px}
-  .hub.vt .vcard{background:rgba(20,27,46,.62);-webkit-backdrop-filter:blur(16px) saturate(1.15);backdrop-filter:blur(16px) saturate(1.15);border:1px solid rgba(251,247,236,.14);color:#FBF7EC;box-shadow:0 26px 60px -30px rgba(0,0,0,.7)}
+  .hub.vt .vcard{background:rgba(20,27,46,.74);-webkit-backdrop-filter:blur(16px) saturate(1.15);backdrop-filter:blur(16px) saturate(1.15);border:1px solid rgba(251,247,236,.14);color:#FBF7EC;box-shadow:0 26px 60px -30px rgba(0,0,0,.7)}
   .hub.vt .vcard .vi-mark img{box-shadow:0 0 0 3px rgba(251,247,236,.92),0 0 0 5px rgba(242,194,48,.55),0 18px 34px -16px rgba(0,0,0,.65)}
   .hub.vt .vcard .vi-word small{color:#F2C230;letter-spacing:.24em}
   .hub.vt .vcard .tagline{color:rgba(251,247,236,.88);font-size:15px;line-height:1.55;max-width:34ch;margin-left:auto;margin-right:auto}
@@ -105,11 +118,12 @@ function vtCss() {
   .hub.vt .vtRot{display:flex;align-items:center;gap:10px;margin:18px 4px 2px;color:rgba(251,247,236,.82);font:700 10.5px/1 var(--f-ui);letter-spacing:.17em;text-transform:uppercase}
   .hub.vt .vtRot span{white-space:nowrap}
   .hub.vt .vtRota{flex:1;max-width:170px;height:18px;color:#F2C230;opacity:.85}
-  .hub.vt .lk{background:rgba(20,27,46,.64);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(251,247,236,.12);color:#FBF7EC;box-shadow:none}
+  .hub.vt .lk{background:rgba(20,27,46,.74);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(251,247,236,.12);color:#FBF7EC;box-shadow:none}
   .hub.vt .lk:hover{background:rgba(29,42,68,.86);transform:translateY(-1px);box-shadow:0 10px 26px -18px rgba(0,0,0,.8)}
   .hub.vt .lk small{color:rgba(251,247,236,.68)}
   .hub.vt .lk .ic{background:rgba(242,194,48,.14);color:#F2C230}
   .hub.vt .lk .ic.wa{background:#25D366;color:#fff}
+  .hub.vt .rede.ml{background:rgba(251,247,236,.14);color:#FBF7EC;border:1px solid rgba(251,247,236,.22)}
   .hub.vt .lk .go{color:rgba(251,247,236,.5)}
   .hub.vt .lk.main{background:#F2C230;border-color:#F2C230;color:#141B2E}
   .hub.vt .lk.main small{color:rgba(20,27,46,.72)}
@@ -118,7 +132,7 @@ function vtCss() {
   .hub.vt .lk.destaque{border-color:rgba(242,194,48,.55);box-shadow:none}
   .hub.vt .lk.destaque .ic{background:#F2C230;color:#141B2E}
   .hub.vt .lk:focus-visible{outline:2px solid #F2C230;outline-offset:3px}
-  .hub.vt .vtIndic{margin-top:18px;background:rgba(20,27,46,.66);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(251,247,236,.12);border-radius:22px;overflow:hidden;color:#FBF7EC}
+  .hub.vt .vtIndic{margin-top:18px;background:rgba(20,27,46,.76);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(251,247,236,.12);border-radius:22px;overflow:hidden;color:#FBF7EC}
   .hub.vt .vtIndic > small{display:block;padding:16px 18px 0;font:700 10.5px/1 var(--f-ui);letter-spacing:.17em;text-transform:uppercase;color:#F2C230}
   .hub.vt .vtIndic > h2{margin:6px 18px 12px;font:700 21px/1.2 var(--f-display);color:#FBF7EC}
   .hub.vt .vtI{display:flex;align-items:center;gap:12px;padding:13px 18px;border-top:1px solid rgba(251,247,236,.1);color:#FBF7EC;text-decoration:none}
